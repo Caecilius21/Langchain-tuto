@@ -1,39 +1,82 @@
+# This script is a minimal end-to-end RAG pipeline
+
 import os
 
 from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_mistralai import ChatMistralAI, OpenAIEmbeddings
+from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
 
 # Load environment variables from .env
 load_dotenv()
+
+# -----------------------------
+# 2) Locate the persisted vector store
+# -----------------------------
+# indexing was already done earlier
+# (documents were chunked, embedded, and stored in Chroma)
 
 # Define the persistent directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 persistent_directory = os.path.join(
     current_dir, "db", "chroma_db_with_metadata")
 
-# Define the embedding model
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+# -----------------------------
+# 3) Define the embedding model
+# -----------------------------
+# This MUST be the same embedding model that was used during indexing.
+# Otherwise, query vectors and document vectors would be incompatible.
 
-# Load the existing vector store with the embedding function
+embeddings = MistralAIEmbeddings(model="mistral-embed")
+
+# -----------------------------
+# 4) Re-open the existing vector store
+# -----------------------------
+# No documents are embedded here.
+# We are just reconnecting to an already-built semantic index.
+
 db = Chroma(persist_directory=persistent_directory,
             embedding_function=embeddings)
 
-# Define the user's question
+# -----------------------------
+# 5) User query (intent)
+# -----------------------------
+
 query = "How can I learn more about LangChain?"
 
-# Retrieve relevant documents based on the query
+# -----------------------------
+# 6) Retrieval step (the "R" in RAG)
+# -----------------------------
+# Convert the vector store into a retriever interface
+# search_type="similarity" = standard nearest-neighbor search
+# k=1 = return the single most similar chunk
+
 retriever = db.as_retriever(
     search_type="similarity",
     search_kwargs={"k": 1},
 )
+
+# This does:
+#   - embed(query)
+#   - vector similarity search in Chroma
+#   - return the most relevant document chunk(s)
 relevant_docs = retriever.invoke(query)
 
+# -----------------------------
+# 7) Inspect retrieved context
+# -----------------------------
 # Display the relevant results with metadata
 print("\n--- Relevant Documents ---")
 for i, doc in enumerate(relevant_docs, 1):
     print(f"Document {i}:\n{doc.page_content}\n")
+
+# -----------------------------
+# 8) Manual prompt construction (augmentation)
+# -----------------------------
+# We explicitly combine:
+#   - the user's question
+#   - the retrieved documents
+# And instruct the model to ONLY use that information.
 
 # Combine the query and the relevant document contents
 combined_input = (
@@ -44,8 +87,19 @@ combined_input = (
     + "\n\nPlease provide an answer based only on the provided documents. If the answer is not found in the documents, respond with 'I'm not sure'."
 )
 
-# Create a ChatOpenAI model
+# -----------------------------
+# 9) Create the chat model (the "G" in RAG)
+# -----------------------------
+# This is the generation model that will produce the final answer
+# Create a Mistral model
+
 model = ChatMistralAI(model="mistral-large-latest")
+
+# -----------------------------
+# 10) Build chat messages
+# -----------------------------
+# SystemMessage sets behavior
+# HumanMessage contains the augmented prompt
 
 # Define the messages for the model
 messages = [
@@ -53,6 +107,9 @@ messages = [
     HumanMessage(content=combined_input),
 ]
 
+# -----------------------------
+# 11) Generate the answer
+# -----------------------------
 # Invoke the model with the combined input
 result = model.invoke(messages)
 

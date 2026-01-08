@@ -1,6 +1,12 @@
+# RAG has two main phases:
+# 1) Indexing phase (offline)
+# Document -> chunks -> embeddings -> stored vectors (with metadata)
+# 2) Retrieval phase (online)
+# Query -> query embedding -> similarity search -> return chunks
+
 import os
 
-from langchain.text_splitter import (
+from langchain_text_splitters import (
     CharacterTextSplitter,
     RecursiveCharacterTextSplitter,
     SentenceTransformersTokenTextSplitter,
@@ -9,7 +15,7 @@ from langchain.text_splitter import (
 )
 from langchain_community.document_loaders import TextLoader
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+from langchain_mistralai.embeddings import MistralAIEmbeddings
 
 # Define the directory containing the text file
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,15 +28,13 @@ if not os.path.exists(file_path):
         f"The file {file_path} does not exist. Please check the path."
     )
 
+# Indexing phase: build multiple vector stores
 # Read the text content from the file
-loader = TextLoader(file_path)
+loader = TextLoader(file_path, encoding="utf-8")
 documents = loader.load()
 
 # Define the embedding model
-embeddings = OpenAIEmbeddings(
-    model="text-embedding-3-small"
-)  # Update to a valid embedding model if needed
-
+embeddings = MistralAIEmbeddings(model="mistral-embed")
 
 # Function to create and persist vector store
 def create_vector_store(docs, store_name):
@@ -54,6 +58,12 @@ char_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 char_docs = char_splitter.split_documents(documents)
 create_vector_store(char_docs, "chroma_db_char")
 
+# Fixed-size chunks by characters
+# Overlap keeps continuity (important for facts spanning boundary)
+# Pros: simple, stable
+# Cons: can cut mid-sentence, which can blur meaning
+
+
 # 2. Sentence-based Splitting
 # Splits text into chunks based on sentences, ensuring chunks end at sentence boundaries.
 # Ideal for maintaining semantic coherence within chunks.
@@ -61,6 +71,10 @@ print("\n--- Using Sentence-based Splitting ---")
 sent_splitter = SentenceTransformersTokenTextSplitter(chunk_size=1000)
 sent_docs = sent_splitter.split_documents(documents)
 create_vector_store(sent_docs, "chroma_db_sent")
+
+# Chunks are sized in tokens, not characters
+# Often yields semantically cleaner chunks than raw character splitting
+# Risk: behavior depends on the tokenizer used internally
 
 # 3. Token-based Splitting
 # Splits text into chunks based on tokens (words or subwords), using tokenizers like GPT-2.
@@ -70,6 +84,11 @@ token_splitter = TokenTextSplitter(chunk_overlap=0, chunk_size=512)
 token_docs = token_splitter.split_documents(documents)
 create_vector_store(token_docs, "chroma_db_token")
 
+# Very “model-aligned” splitting (transformers care about tokens)
+# No overlap means boundary facts can be lost
+# Pros: respects token limits
+# Cons: can miss answers that straddle chunk boundaries
+
 # 4. Recursive Character-based Splitting
 # Attempts to split text at natural boundaries (sentences, paragraphs) within character limit.
 # Balances between maintaining coherence and adhering to character limits.
@@ -78,6 +97,9 @@ rec_char_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000, chunk_overlap=100)
 rec_char_docs = rec_char_splitter.split_documents(documents)
 create_vector_store(rec_char_docs, "chroma_db_rec_char")
+
+# Pros: usually best default for general text
+# Cons: still approximate depending on separators
 
 # 5. Custom Splitting
 # Allows creating custom splitting logic based on specific requirements.
@@ -90,6 +112,9 @@ class CustomTextSplitter(TextSplitter):
         # Custom logic for splitting text
         return text.split("\n\n")  # Example: split by paragraphs
 
+# Chunks become paragraphs
+# Pros: high coherence, preserves structure
+# Cons: chunk sizes become uneven, some may be huge or tiny; huge chunks can embed “too much”, hurting precision
 
 custom_splitter = CustomTextSplitter()
 custom_docs = custom_splitter.split_documents(documents)

@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
-from langchain import hub
-from langchain.agents import AgentExecutor, create_structured_chat_agent
-from langchain.memory import ConversationBufferMemory
+from langchain_classic import hub
+from langchain_classic.agents import AgentExecutor, create_structured_chat_agent
+from langchain_classic.chains.conversation.memory import ConversationBufferMemory
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.tools import Tool
 from langchain_mistralai import ChatMistralAI
@@ -48,7 +48,7 @@ tools = [
 prompt = hub.pull("hwchase17/structured-chat-agent")
 
 # Initialize a ChatOpenAI model
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatMistralAI(model="mistral-large-latest")
 
 # Create a structured Chat Agent with Conversation Buffer Memory
 # ConversationBufferMemory stores the conversation history, allowing the agent to maintain context across interactions

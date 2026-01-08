@@ -1,15 +1,15 @@
 import os
 
 from dotenv import load_dotenv
-from langchain import hub
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic import hub
+from langchain_classic.agents import AgentExecutor, create_react_agent
+from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.vectorstores import Chroma
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import Tool
-from langchain_mistralai import ChatMistralAI, OpenAIEmbeddings
+from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
 
 # Load environment variables from .env file
 load_dotenv()
@@ -30,7 +30,7 @@ else:
     )
 
 # Define the embedding model
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+embeddings = MistralAIEmbeddings(model="mistral-embed")
 
 # Load the existing vector store with the embedding function
 db = Chroma(persist_directory=persistent_directory,
@@ -45,7 +45,7 @@ retriever = db.as_retriever(
 )
 
 # Create a ChatOpenAI model
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatMistralAI(model="mistral-large-latest")
 
 # Contextualize question prompt
 # This system prompt helps the AI understand that it should reformulate the question

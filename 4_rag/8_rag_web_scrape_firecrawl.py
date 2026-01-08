@@ -1,10 +1,10 @@
 import os
 
 from dotenv import load_dotenv
-from langchain.text_splitter import CharacterTextSplitter
+from langchain_text_splitters import CharacterTextSplitter
 from langchain_community.document_loaders import FireCrawlLoader
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+from langchain_mistralai import MistralAIEmbeddings
 
 # Load environment variables from .env
 load_dotenv()
@@ -45,7 +45,7 @@ def create_vector_store():
     print(f"Sample chunk:\n{split_docs[0].page_content}\n")
 
     # Step 3: Create embeddings for the document chunks
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    embeddings = MistralAIEmbeddings(model="mistral-embed")
 
     # Step 4: Create and persist the vector store with the embeddings
     print(f"\n--- Creating vector store in {persistent_directory} ---")

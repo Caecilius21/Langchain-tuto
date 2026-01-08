@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
-from langchain import hub
-from langchain.agents import (
+from langchain_classic import hub
+from langchain_classic.agents import (
     AgentExecutor,
     create_react_agent,
 )
@@ -9,7 +9,6 @@ from langchain_mistralai import ChatMistralAI
 
 # Load environment variables from .env file
 load_dotenv()
-
 
 # Define a very simple tool function that returns the current time
 def get_current_time(*args, **kwargs):
@@ -36,9 +35,7 @@ tools = [
 prompt = hub.pull("hwchase17/react")
 
 # Initialize a ChatOpenAI model
-llm = ChatOpenAI(
-    model="gpt-4o", temperature=0
-)
+llm = ChatMistralAI(model="mistral-large-latest")
 
 # Create the ReAct agent using the create_react_agent function
 agent = create_react_agent(

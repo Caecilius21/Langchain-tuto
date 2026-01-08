@@ -5,8 +5,8 @@ import os
 from typing import Type
 
 from dotenv import load_dotenv
-from langchain import hub
-from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_classic import hub
+from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from langchain.pydantic_v1 import BaseModel, Field
 from langchain_core.tools import BaseTool
 from langchain_mistralai import ChatMistralAI
@@ -70,7 +70,7 @@ tools = [
 ]
 
 # Initialize a ChatOpenAI model
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatMistralAI(model="mistral-large-latest")
 
 # Pull the prompt template from the hub
 prompt = hub.pull("hwchase17/openai-tools-agent")
